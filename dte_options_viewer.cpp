@@ -91,8 +91,18 @@ SCSFExport scsf_DTEOptionsViewer(SCStudyInterfaceRef sc)
         return;
     }
 
-    // Skip processing if study is hidden
+    // Skip processing if study is hidden or insufficient data
     if (sc.HideStudy) return;
+    
+    // Only update on new bars or at specified intervals to avoid excessive processing
+    static int LastUpdateBar = -1;
+    static SCDateTime LastUpdateTime = 0;
+    SCDateTime CurrentTime = sc.CurrentSystemDateTime;
+    
+    bool ShouldUpdate = (sc.Index > LastUpdateBar) || 
+                       (CurrentTime - LastUpdateTime >= i_UpdateInterval.GetInt());
+    
+    if (!ShouldUpdate) return;
 
     // Get current options data
     std::vector<OptionData> OptionsChain;
@@ -159,8 +169,12 @@ SCSFExport scsf_DTEOptionsViewer(SCStudyInterfaceRef sc)
         }
         
         float TotalOI = TotalCallOI + TotalPutOI;
-        float CallOIPercent = (TotalOI > 0) ? (TotalCallOI / TotalOI) * 100.0f : 0;
-        float PutOIPercent = (TotalOI > 0) ? (TotalPutOI / TotalOI) * 100.0f : 0;
+        
+        // Ensure we have valid data before calculating percentages
+        if (TotalOI <= 0) return; 
+        
+        float CallOIPercent = (TotalCallOI / TotalOI) * 100.0f;
+        float PutOIPercent = (TotalPutOI / TotalOI) * 100.0f;
         
         // Display Flow Split Badge (positioned after Largest [GEX] on toolbar)
         if (i_ShowFlowSplit.GetYesNo())
@@ -190,6 +204,11 @@ SCSFExport scsf_DTEOptionsViewer(SCStudyInterfaceRef sc)
             FlowSplitTool.Text.Format("Flow Split: %.0f%% Call / %.0f%% Put", 
                                      CallOIPercent, PutOIPercent);
             FlowSplitTool.AddAsUserDrawnDrawing = 1;
+            
+            // Add background for better visibility
+            FlowSplitTool.TextBackgroundColor = COLOR_BLACK;
+            FlowSplitTool.TransparencyLevel = 20; // Slight transparency for background
+            
             sc.UseTool(FlowSplitTool);
         }
         
@@ -211,6 +230,7 @@ SCSFExport scsf_DTEOptionsViewer(SCStudyInterfaceRef sc)
             MaxCallTool.Region = sc.GraphRegion;
             MaxCallTool.Color = COLOR_GREEN;
             MaxCallTool.Text.Format("Max Call OI: %.0f @ %.0f", MaxCallOI, MaxCallStrike);
+            MaxCallTool.TextBackgroundColor = COLOR_BLACK;
             MaxCallTool.AddAsUserDrawnDrawing = 1;
             sc.UseTool(MaxCallTool);
             
@@ -229,6 +249,7 @@ SCSFExport scsf_DTEOptionsViewer(SCStudyInterfaceRef sc)
             MaxPutTool.Region = sc.GraphRegion;
             MaxPutTool.Color = COLOR_RED;
             MaxPutTool.Text.Format("Max Put OI: %.0f @ %.0f", MaxPutOI, MaxPutStrike);
+            MaxPutTool.TextBackgroundColor = COLOR_BLACK;
             MaxPutTool.AddAsUserDrawnDrawing = 1;
             sc.UseTool(MaxPutTool);
         }
@@ -237,5 +258,9 @@ SCSFExport scsf_DTEOptionsViewer(SCStudyInterfaceRef sc)
         s_FlowSplit[sc.Index] = CallOIPercent;
         s_MaxCallOI[sc.Index] = MaxCallOI;
         s_MaxPutOI[sc.Index] = MaxPutOI;
+        
+        // Update tracking variables
+        LastUpdateBar = sc.Index;
+        LastUpdateTime = CurrentTime;
     }
 }
