@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="JIGSAW_Export.cpp" />
+    <ClCompile Include="dte_options_viewer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="sc-udp-dll-ctrl.ps1">
